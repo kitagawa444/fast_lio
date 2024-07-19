@@ -43,6 +43,8 @@ class GlobalLocalization():
         self.oneshot = rospy.get_param("~oneshot", False)
         self.headless = rospy.get_param("~headless", False)
         self.reverse_tf = rospy.get_param("~reverse_tf", False)
+        self.tf_prefix = rospy.get_param("~tf_prefix", "")
+        self.target_frame = "camera_init" if tf_prefix=="" else tf_prefix + "/" + "camera_init"
 
         # get init frame offset from rosparam
 
@@ -201,18 +203,19 @@ class GlobalLocalization():
         map_to_odom.header.frame_id = 'map'
         self.pub_map_to_odom.publish(map_to_odom)
 
+        
         static_transformStamped = TransformStamped()
         static_transformStamped.header.stamp = self.cur_odom.header.stamp
         static_transformStamped.header.frame_id = 'map'
-        static_transformStamped.child_frame_id = 'camera_init'
+        static_transformStamped.child_frame_id = self.target_frame
         static_transformStamped.transform.translation = Vector3(*pos)
         static_transformStamped.transform.rotation = Quaternion(*quat)
 
         rospy.loginfo("Map to Odom: pos: {}, euler: {} \n".format(pos, euler))
 
         if self.reverse_tf:
-            static_transformStamped.header.frame_id = 'camera_init'
-            static_transformStamped.child_frame_id = 'map'
+            static_transformStamped.header.frame_id = self.target_frame
+            static_transformStamped.child_rame_id = 'map'
             T_odom_to_map = tf.transformations.inverse_matrix(self.T_map_to_odom)
             pos = tf.transformations.translation_from_matrix(T_odom_to_map)
             static_transformStamped.transform.translation = Vector3(*pos)

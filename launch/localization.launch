@@ -11,13 +11,14 @@
 
   <!-- fast lio for odometry -->
   <include file="$(find fast_lio)/launch/mapping_mid360.launch" if="$(arg mapping)">
+    <arg name="prefix" value="$(arg prefix)" />
     <arg name="rviz" value="false" />
     <arg name="livox_driver" value="$(arg livox_driver)" />
   </include>
 
   <!-- loalization-->
   <node pkg="fast_lio" type="global_localization.py" name="global_localization" output="screen">
-
+    <param name="tf_prefix" value="$(arg prefix)" />
     <param name="headless" value="$(arg headless)"/>
 
     <remap from="/cloud_registered" to="$(arg prefix)/cloud_registered" />

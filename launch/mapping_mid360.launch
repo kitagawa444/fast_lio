@@ -14,9 +14,8 @@
 	<param name="filter_size_map" type="double" value="0.5" />
 	<param name="cube_side_length" type="double" value="1000" />
 	<param name="runtime_pos_log_enable" type="bool" value="0" />
-	<node pkg="fast_lio" type="fastlio_mapping" name="laserMapping" output="screen">
-          <param name="tf_prefix" value="$(arg prefix)" />
-        </node> 
+	<param name="tf_prefix" value="$(arg prefix)" />
+	<node pkg="fast_lio" type="fastlio_mapping" name="laserMapping" output="screen"/> 
 
 	<group if="$(arg rviz)">
 	<node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find fast_lio)/rviz_cfg/loam_livox.rviz" />
@@ -24,5 +23,7 @@
 
 	<node pkg="tf" type="static_transform_publisher" name="livox_frame_body_broadcaster" args="0 0 0 0 0 0 1 $(arg prefix)/body $(arg prefix)/livox_frame 20" />
 
-	<include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" if="$(arg livox_driver)" />
+	<include file="$(find livox_ros_driver2)/launch_ROS1/msg_MID360.launch" if="$(arg livox_driver)">
+	<arg name="prefix" value="$(arg prefix)" />
+	</include>
 </launch>

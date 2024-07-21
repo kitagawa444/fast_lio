@@ -20,17 +20,19 @@
   <node pkg="fast_lio" type="global_localization.py" name="global_localization" output="screen">
     <param name="tf_prefix" value="$(arg prefix)" />
     <param name="headless" value="$(arg headless)"/>
-
-    <remap from="/cloud_registered" to="$(arg prefix)/cloud_registered" />
-    <remap from="/Odometry" to="$(arg prefix)/Odometry" />
     <rosparam file="$(find fast_lio)/config/localization.yaml"/>
   </node>
 
-
   <!-- global map-->
-  <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/3d_map" />
-  <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/3d_map_visualize" />
-
+  <group if="$(eval prefix!='')" >
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map" />
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map_visualize" /> 
+  </group>
+  <group unless="$(eval prefix!='')" >
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/3d_map" />
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/3d_map_visualize" /> 
+  </group>
+  
   <!-- rviz -->
   <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find fast_lio)/rviz_cfg/localization.rviz" unless="$(arg headless)"/>
 

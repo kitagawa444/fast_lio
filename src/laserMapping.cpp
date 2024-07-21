@@ -82,9 +82,7 @@ mutex mtx_buffer;
 condition_variable sig_buffer;
 
 string root_dir = ROOT_DIR;
-string map_file_path, lid_topic, imu_topic, tf_prefix;
-string parent_frame = (tf_prefix.empty())? "camera_init" : tf_prefix+"/"+"camera_init";
-string child_frame = (tf_prefix.empty())? "body" : tf_prefix+"/"+"body";
+string map_file_path, lid_topic, imu_topic, tf_prefix, parent_frame, child_frame;
 
 double res_mean_last = 0.05, total_residual = 0.0;
 double last_timestamp_lidar = 0, last_timestamp_imu = -1.0;
@@ -588,7 +586,7 @@ void publish_frame_body(const ros::Publisher & pubLaserCloudFull_body)
     sensor_msgs::PointCloud2 laserCloudmsg;
     pcl::toROSMsg(*laserCloudIMUBody, laserCloudmsg);
     laserCloudmsg.header.stamp = ros::Time().fromSec(lidar_end_time);
-    laserCloudmsg.header.frame_id = "body";
+    laserCloudmsg.header.frame_id = child_frame;
     pubLaserCloudFull_body.publish(laserCloudmsg);
     publish_count -= PUBFRAME_PERIOD;
 }
@@ -838,7 +836,13 @@ int main(int argc, char** argv)
     nh.param<vector<double>>("mapping/extrinsic_T", extrinT, vector<double>());
     nh.param<vector<double>>("mapping/extrinsic_R", extrinR, vector<double>());
     cout<<"p_pre->lidar_type "<<p_pre->lidar_type<<endl;
-    
+
+    parent_frame = (tf_prefix.empty())? "camera_init" : tf_prefix+"/"+"camera_init";
+    child_frame = (tf_prefix.empty())? "body" : tf_prefix+"/"+"body";
+
+    cout << tf_prefix << endl;
+    cout << parent_frame << endl;
+
     path.header.stamp    = ros::Time::now();
     path.header.frame_id = parent_frame;
 

@@ -44,7 +44,7 @@ class GlobalLocalization():
         self.headless = rospy.get_param("~headless", False)
         self.reverse_tf = rospy.get_param("~reverse_tf", False)
         self.tf_prefix = rospy.get_param("~tf_prefix", "")
-        self.target_frame = "camera_init" if tf_prefix=="" else tf_prefix + "/" + "camera_init"
+        self.target_frame = "camera_init" if self.tf_prefix=="" else self.tf_prefix + "/" + "camera_init"
 
         # get init frame offset from rosparam
 
@@ -75,17 +75,17 @@ class GlobalLocalization():
         self.phase = 0
 
         # publishers
-        self.pub_pc_in_map = rospy.Publisher('/cur_scan_in_map', PointCloud2, queue_size=1)
-        self.pub_submap = rospy.Publisher('/submap', PointCloud2, queue_size=1)
-        self.pub_map_to_odom = rospy.Publisher('/map_to_odom', Odometry, queue_size=1)
+        self.pub_pc_in_map = rospy.Publisher('cur_scan_in_map', PointCloud2, queue_size=1)
+        self.pub_submap = rospy.Publisher('submap', PointCloud2, queue_size=1)
+        self.pub_map_to_odom = rospy.Publisher('map_to_odom', Odometry, queue_size=1)
         self.broadcaster = tf2_ros.StaticTransformBroadcaster()
 
         # subscriver
-        rospy.Subscriber('/cloud_registered', PointCloud2, self.cb_cur_scan, queue_size=1)
-        rospy.Subscriber('/Odometry', Odometry, self.cb_cur_odom, queue_size=1)
+        rospy.Subscriber('cloud_registered', PointCloud2, self.cb_cur_scan, queue_size=1)
+        rospy.Subscriber('Odometry', Odometry, self.cb_cur_odom, queue_size=1)
 
         rospy.logwarn('Waiting for global map......')
-        self.initialize_global_map(rospy.wait_for_message('/3d_map', PointCloud2))
+        self.initialize_global_map(rospy.wait_for_message("3d_map", PointCloud2))
         rospy.loginfo('Get global map......')
 
         while self.phase == 0:

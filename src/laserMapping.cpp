@@ -840,9 +840,6 @@ int main(int argc, char** argv)
     parent_frame = (tf_prefix.empty())? "camera_init" : tf_prefix+"/"+"camera_init";
     child_frame = (tf_prefix.empty())? "body" : tf_prefix+"/"+"body";
 
-    cout << tf_prefix << endl;
-    cout << parent_frame << endl;
-
     path.header.stamp    = ros::Time::now();
     path.header.frame_id = parent_frame;
 

@@ -25,12 +25,12 @@
 
   <!-- global map-->
   <group if="$(eval prefix!='')" >
-    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map" />
-    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map_visualize" /> 
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map" />
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/$(arg prefix)/3d_map_visualize" /> 
   </group>
   <group unless="$(eval prefix!='')" >
-    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/3d_map" />
-    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0.5 _frame_id:=map cloud_pcd:=/3d_map_visualize" /> 
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/3d_map" />
+    <node pkg="pcl_ros" type="pcd_to_pointcloud" name="map_publisher_visualize" output="screen" args="$(arg map) 0 _frame_id:=map cloud_pcd:=/3d_map_visualize" /> 
   </group>
   
   <!-- rviz -->

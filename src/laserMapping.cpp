@@ -132,6 +132,8 @@ M3D Lidar_R_wrt_IMU(Eye3d);
 /*** EKF inputs and output ***/
 MeasureGroup Measures;
 esekfom::esekf<state_ikfom, 12, input_ikfom> kf;
+esekfom::esekf<state_ikfom, 12, input_ikfom> kf_pre;
+bool kf_pre_ready = false;
 state_ikfom state_point;
 vect3 pos_lid;
 
@@ -142,6 +144,7 @@ geometry_msgs::msg::PoseStamped msg_body_pose;
 
 shared_ptr<Preprocess> p_pre(new Preprocess());
 shared_ptr<ImuProcess> p_imu(new ImuProcess());
+rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pubPrecedeOdom;
 
 void SigHandle(int sig)
 {
@@ -369,6 +372,33 @@ void imu_cbk(const sensor_msgs::msg::Imu::UniquePtr msg_in)
     {
         std::cerr << "lidar loop back, clear buffer" << std::endl;
         imu_buffer.clear();
+        kf_pre_ready = false;
+    }
+
+    if (kf_pre_ready)
+    {
+        const auto prev_imu = imu_buffer.empty() ? p_imu->getLastImu() : imu_buffer.back();
+        p_imu->OnlyPredict(msg, prev_imu, kf_pre);
+
+        nav_msgs::msg::Odometry odom_msg;
+        odom_msg.header.frame_id = "camera_init";
+        odom_msg.child_frame_id = "body";
+        odom_msg.header.stamp = msg->header.stamp;
+        const auto kf_pre_state = kf_pre.get_x();
+        odom_msg.pose.pose.position.x = kf_pre_state.pos(0);
+        odom_msg.pose.pose.position.y = kf_pre_state.pos(1);
+        odom_msg.pose.pose.position.z = kf_pre_state.pos(2);
+        odom_msg.pose.pose.orientation.x = kf_pre_state.rot.coeffs()[0];
+        odom_msg.pose.pose.orientation.y = kf_pre_state.rot.coeffs()[1];
+        odom_msg.pose.pose.orientation.z = kf_pre_state.rot.coeffs()[2];
+        odom_msg.pose.pose.orientation.w = kf_pre_state.rot.coeffs()[3];
+        odom_msg.twist.twist.linear.x = kf_pre_state.vel(0);
+        odom_msg.twist.twist.linear.y = kf_pre_state.vel(1);
+        odom_msg.twist.twist.linear.z = kf_pre_state.vel(2);
+        odom_msg.twist.twist.angular.x = msg->angular_velocity.x - kf_pre_state.bg(0);
+        odom_msg.twist.twist.angular.y = msg->angular_velocity.y - kf_pre_state.bg(1);
+        odom_msg.twist.twist.angular.z = msg->angular_velocity.z - kf_pre_state.bg(2);
+        pubPrecedeOdom->publish(odom_msg);
     }
 
     last_timestamp_imu = timestamp;
@@ -902,6 +932,7 @@ public:
 
         fill(epsi, epsi+23, 0.001);
         kf.init_dyn_share(get_f, df_dx, df_dw, h_share_model, NUM_MAX_ITERATIONS, epsi);
+        kf_pre.init_dyn_share(get_f, df_dx, df_dw, h_share_model, NUM_MAX_ITERATIONS, epsi);
 
         /*** debug record ***/
         // FILE *fp;
@@ -932,6 +963,7 @@ public:
         pubLaserCloudEffect_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/cloud_effected", 20);
         pubLaserCloudMap_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("/Laser_map", 20);
         pubOdomAftMapped_ = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry", 20);
+        pubPrecedeOdom = this->create_publisher<nav_msgs::msg::Odometry>("/Odometry_precede", 20);
         pubPath_ = this->create_publisher<nav_msgs::msg::Path>("/path", 20);
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
@@ -1057,6 +1089,20 @@ private:
             geoQuat.y = state_point.rot.coeffs()[1];
             geoQuat.z = state_point.rot.coeffs()[2];
             geoQuat.w = state_point.rot.coeffs()[3];
+
+            /*** Update the prediction-only KF from the latest LiDAR-corrected state. ***/
+            auto kf_state = kf.get_x();
+            auto kf_cov = kf.get_P();
+            kf_pre.change_x(kf_state);
+            kf_pre.change_P(kf_cov);
+
+            // Re-propagate IMU samples that arrived after this LiDAR scan.
+            for (size_t i = 0; i < imu_buffer.size(); ++i)
+            {
+                const auto prev_imu = i == 0 ? p_imu->getLastImu() : imu_buffer.at(i - 1);
+                p_imu->OnlyPredict(imu_buffer.at(i), prev_imu, kf_pre);
+            }
+            kf_pre_ready = true;
 
             double t_update_end = omp_get_wtime();
 

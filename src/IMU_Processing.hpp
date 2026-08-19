@@ -48,6 +48,11 @@ class ImuProcess
   void set_acc_bias_cov(const V3D &b_a);
   Eigen::Matrix<double, 12, 12> Q;
   void Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state, PointCloudXYZI::Ptr pcl_un_);
+  void OnlyPredict(
+      const sensor_msgs::msg::Imu::ConstSharedPtr &imu,
+      const sensor_msgs::msg::Imu::ConstSharedPtr &prev_imu,
+      esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state);
+  sensor_msgs::msg::Imu::ConstSharedPtr getLastImu() const { return last_imu_; }
 
   ofstream fout_imu;
   V3D cov_acc;
@@ -75,7 +80,7 @@ class ImuProcess
   V3D angvel_last;
   V3D acc_s_last;
   double start_timestamp_;
-  double last_lidar_end_time_;
+  double last_lidar_end_time_ = 0.0;
   int    init_iter_num = 1;
   bool   b_first_frame_ = true;
   bool   imu_need_init_ = true;
@@ -108,6 +113,7 @@ void ImuProcess::Reset()
   angvel_last       = Zero3d;
   imu_need_init_    = true;
   start_timestamp_  = -1;
+  last_lidar_end_time_ = 0.0;
   init_iter_num     = 1;
   v_imu_.clear();
   IMUpose.clear();
@@ -376,4 +382,41 @@ void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 
   t3 = omp_get_wtime();
   
   // cout<<"[ IMU Process ]: Time: "<<t3 - t1<<endl;
+}
+
+void ImuProcess::OnlyPredict(
+    const sensor_msgs::msg::Imu::ConstSharedPtr &imu,
+    const sensor_msgs::msg::Imu::ConstSharedPtr &prev_imu,
+    esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state)
+{
+  const double imu_time = rclcpp::Time(imu->header.stamp).seconds();
+  const double prev_imu_time = rclcpp::Time(prev_imu->header.stamp).seconds();
+  double dt = prev_imu_time < last_lidar_end_time_
+      ? imu_time - last_lidar_end_time_
+      : imu_time - prev_imu_time;
+
+  if (dt <= 0.0)
+  {
+    return;
+  }
+
+  V3D angvel_avr, acc_avr;
+  angvel_avr <<
+      0.5 * (prev_imu->angular_velocity.x + imu->angular_velocity.x),
+      0.5 * (prev_imu->angular_velocity.y + imu->angular_velocity.y),
+      0.5 * (prev_imu->angular_velocity.z + imu->angular_velocity.z);
+  acc_avr <<
+      0.5 * (prev_imu->linear_acceleration.x + imu->linear_acceleration.x),
+      0.5 * (prev_imu->linear_acceleration.y + imu->linear_acceleration.y),
+      0.5 * (prev_imu->linear_acceleration.z + imu->linear_acceleration.z);
+  acc_avr = acc_avr * G_m_s2 / mean_acc.norm();
+
+  input_ikfom in;
+  in.acc = acc_avr;
+  in.gyro = angvel_avr;
+  Q.block<3, 3>(0, 0).diagonal() = cov_gyr;
+  Q.block<3, 3>(3, 3).diagonal() = cov_acc;
+  Q.block<3, 3>(6, 6).diagonal() = cov_bias_gyr;
+  Q.block<3, 3>(9, 9).diagonal() = cov_bias_acc;
+  kf_state.predict(dt, Q, in);
 }

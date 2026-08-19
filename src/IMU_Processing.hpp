@@ -53,6 +53,7 @@ class ImuProcess
       const sensor_msgs::msg::Imu::ConstSharedPtr &prev_imu,
       esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state);
   sensor_msgs::msg::Imu::ConstSharedPtr getLastImu() const { return last_imu_; }
+  bool getImuInit() const { return !imu_need_init_; }
 
   ofstream fout_imu;
   V3D cov_acc;
@@ -389,6 +390,11 @@ void ImuProcess::OnlyPredict(
     const sensor_msgs::msg::Imu::ConstSharedPtr &prev_imu,
     esekfom::esekf<state_ikfom, 12, input_ikfom> &kf_state)
 {
+  if (imu_need_init_)
+  {
+    return;
+  }
+
   const double imu_time = rclcpp::Time(imu->header.stamp).seconds();
   const double prev_imu_time = rclcpp::Time(prev_imu->header.stamp).seconds();
   double dt = prev_imu_time < last_lidar_end_time_

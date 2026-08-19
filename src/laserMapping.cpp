@@ -375,7 +375,7 @@ void imu_cbk(const sensor_msgs::msg::Imu::UniquePtr msg_in)
         kf_pre_ready = false;
     }
 
-    if (kf_pre_ready)
+    if (kf_pre_ready && p_imu->getImuInit())
     {
         const auto prev_imu = imu_buffer.empty() ? p_imu->getLastImu() : imu_buffer.back();
         p_imu->OnlyPredict(msg, prev_imu, kf_pre);
